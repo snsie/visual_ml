@@ -4,7 +4,7 @@ from typing import NewType
 import bpy
 import bmesh
 import pathlib
-from scipy import constants
+# from scipy import constants
 import math
 import numpy as np
 import mathutils
@@ -317,12 +317,12 @@ def create_node_mesh(self, scene, current_collection, depth_scale=0.2):
         bm.free()  # free and prevent further access
         current_cube = scene.active_object
 
-        ##################################SMOOTHING###############
+        # #################################SMOOTHING###############
         # bpy.ops.object.editmode_toggle()
         # bpy.ops.mesh.select_all(action='SELECT')
         # bpy.ops.mesh.faces_shade_smooth()
         # bpy.ops.object.editmode_toggle()
-        ##################################SMOOTHING###############
+        # #################################SMOOTHING###############
         # for f in current_cube_data.polygons:
         #     f.use_smooth = True
         # bpy.ops.object.editmode_toggle()

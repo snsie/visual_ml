@@ -1,6 +1,5 @@
 # pylint:disable=assignment-from-no-return
 import bpy
-from bpy.types import (Object, Panel, PropertyGroup)
 from bpy.props import CollectionProperty
 
 
@@ -8,11 +7,13 @@ from bpy.props import CollectionProperty
 # Object.WindowPanelGenerator = CollectionProperty(type=MeshNetProperties)
 
 
-class VIEW3D_PT_visual_ml(Panel):
+class VIEW3D_PT_visual_ml(bpy.types.Panel):
+    bl_category = 'Create'
+    bl_label = 'Visual ML'
     bl_space_type = 'VIEW_3D'
     bl_region_type = 'UI'
-    bl_category = 'Aiga Nets'
-    bl_label = 'Net Tools'
+    bl_context = "objectmode"
+    bl_options = {'DEFAULT_CLOSED'}
     # bl_options = {'REGISTER'}
     # count_N: bpy.props.IntProperty(
     #     name="Count N",
@@ -33,6 +34,8 @@ class VIEW3D_PT_visual_ml(Panel):
         # col.prop(slider=True)
         box = col.box()
         box_col = box.column()
+        box_col.operator('mesh.visual_ml_network',
+                         text="Add Network", icon="NETWORK_DRIVE")
         # custom_props = box_col.operator(
         #     'mesh.add_nets', text="Custom Net", icon='NETWORK_DRIVE')
         # col = row.col()
