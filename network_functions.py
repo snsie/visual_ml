@@ -55,6 +55,41 @@ def create_weight_grid(self, context: bpy.types.Context,
     current_collection.objects.link(mesh_obj)
 
 
+def set_weight_anim(self, context: bpy.types.Context,
+                    current_collection: bpy.types.Collection,
+                    json_data_begin: list,
+                    json_data_end: list,
+                    ):
+    max_n = 64
+    y_step = 2 / max_n
+    for i in range(max_n):
+        weight_cp_name = 'weight_prim_' + str(i + 1).zfill(3)
+        ob = bpy.data.objects[weight_cp_name]
+        context.scene.frame_set(1)
+        ob.location = (0, 0, json_data_begin[i] / 5)
+        ob.keyframe_insert(data_path="location")
+        context.scene.frame_set(30)
+
+        ob.location = (0, 0, json_data_end[i] / 5)
+
+        ob.keyframe_insert(data_path="location")
+        context.scene.frame_set(60)
+        ob.location = (0, 0, json_data_begin[i] / 5)
+        ob.keyframe_insert(data_path="location")
+    context.scene.frame_set(1)
+    # base_w.select_set(True)
+    # bpy.ops.object.hide_view_set(unselected=False)
+    # bpy.ops.object.select_all(action='DESELECT')
+    # collection_name = 'asdf'
+    # for j in range(2):
+    #     curr_coll_name = collection_name + str(j)
+    #     bpy.ops.object.duplicate_move()
+    #     bpy.ops.transform.translate(value=[0, y_step, 0])
+    #     bpy.ops.object.move_to_collection(
+    #         collection_index=-1,
+    #  is_new=True, new_collection_name=repr(curr_coll_name))
+
+
 def create_weight_prims(self, context: bpy.types.Context,
                         current_collection: bpy.types.Collection,
                         json_data: dict):
@@ -67,7 +102,86 @@ def create_weight_prims(self, context: bpy.types.Context,
     master_collection = context.collection
     bpy.ops.curve.primitive_bezier_curve_add()
     weight_prim = context.active_object
-    weight_prim.data.name = 'weight_curve_prim'
+    context.object.data.resolution_u = 32
+
+    # ########################################################33
+    material = bpy.data.materials.new(name="node_material")
+    material.blend_method = 'BLEND'
+
+    # Use nodes
+    material.use_nodes = True
+    bsdf = material.node_tree.nodes["Principled BSDF"]
+    # bsdf.inputs[0].default_value = (0.0284887, 0.8, 0.0864939, 1)
+    weight_prim.data.materials.append(material)
+
+    weight_prim_name = 'weight_curve_prim'
+    weight_prim.name = weight_prim_name
+    nt_mat = bpy.data.materials['node_material'].node_tree
+    # ######
+    curr_node = nt_mat.nodes.new(type="ShaderNodeValToRGB")
+    curr_node.location.x = curr_node.location.x - curr_node.width * 1.5
+    curr_node.location.y = curr_node.location.y + curr_node.height * 2
+    curr_node.color_ramp.elements[0].color = (0.623953, 0.00248372, 0, 1)
+    curr_node.color_ramp.elements[1].color = (0.00127905, 1, 0, 1)
+    sock_out = curr_node.outputs['Color']
+    sock_in = bsdf.inputs['Base Color']
+    nt_mat.links.new(sock_out, sock_in)
+    # ######
+    prev_node = curr_node
+    curr_node = nt_mat.nodes.new(type="ShaderNodeMapRange")
+    curr_node.location.x = prev_node.location.x - curr_node.width * 1.5
+    curr_node.location.y = prev_node.location.y
+    curr_node.inputs['From Min'].default_value = -0.05
+    curr_node.inputs['From Max'].default_value = 0.05
+    sock_out = curr_node.outputs['Result']
+    sock_in = prev_node.inputs['Fac']
+    nt_mat.links.new(sock_out, sock_in)
+    # #######
+    prev_node = curr_node
+    curr_node = nt_mat.nodes.new(type="ShaderNodeSeparateXYZ")
+    curr_node.location.x = prev_node.location.x - curr_node.width * 1.5
+    curr_node.location.y = prev_node.location.y
+    sock_out = curr_node.outputs['Z']
+    sock_in = prev_node.inputs['Value']
+    nt_mat.links.new(sock_out, sock_in)
+    # #######
+    prev_node = curr_node
+    curr_node = nt_mat.nodes.new(type="ShaderNodeNewGeometry")
+    curr_node.location.x = prev_node.location.x - curr_node.width * 1.5
+    curr_node.location.y = prev_node.location.y
+    sock_out = curr_node.outputs['Position']
+    sock_in = prev_node.inputs['Vector']
+    nt_mat.links.new(sock_out, sock_in)
+
+    # ######## NODES FOR ALPHA BELOW
+    prev_node = nt_mat.nodes['Map Range']
+    curr_node = nt_mat.nodes.new(type="ShaderNodeMath")
+    curr_node.location.x = prev_node.location.x
+    curr_node.location.y = prev_node.location.y - prev_node.height * 2.5
+    curr_node.operation = 'ABSOLUTE'
+    prev_node = nt_mat.nodes['Separate XYZ']
+    sock_out = prev_node.outputs['Z']
+    sock_in = curr_node.inputs['Value']
+    nt_mat.links.new(sock_out, sock_in)
+    # ########
+    prev_node = nt_mat.nodes['ColorRamp']
+    curr_node = nt_mat.nodes.new(type="ShaderNodeMapRange")
+    curr_node.name = 'Map Range Alpha'
+    curr_node.location.x = prev_node.location.x
+    curr_node.location.y = prev_node.location.y - prev_node.height * 2.5
+    curr_node.inputs['From Min'].default_value = 0
+    curr_node.inputs['From Max'].default_value = 0.05
+    curr_node.inputs['To Min'].default_value = 0.1
+
+    prev_node = nt_mat.nodes['Math']
+    sock_out = prev_node.outputs['Value']
+    sock_in = curr_node.inputs['Value']
+    nt_mat.links.new(sock_out, sock_in)
+
+    sock_out = curr_node.outputs['Result']
+    sock_in = bsdf.inputs['Alpha']
+    nt_mat.links.new(sock_out, sock_in)
+    # ########################################################33
 
     bpy.ops.object.mode_set(mode='EDIT')
     weight_prim.data.splines[0].bezier_points[0].select_control_point = False
@@ -79,8 +193,8 @@ def create_weight_prims(self, context: bpy.types.Context,
     weight_prim.data.splines[0].bezier_points[1].select_right_handle = True
 
     bpy.ops.curve.extrude_move()
-    current_collection.objects.link(weight_prim)
-    master_collection.objects.unlink(weight_prim)
+    # current_collection.objects.link(weight_prim)
+    # master_collection.objects.unlink(weight_prim)
     # weight_prim.location = (-2.5, 0, 0)
     y_space_between_nodes = 1 / (10 * max_n)
     bez_point_rad = 0.5
@@ -102,28 +216,36 @@ def create_weight_prims(self, context: bpy.types.Context,
         1 - bez_point_rad, 0, 0)
     weight_prim.data.splines[0].bezier_points[2].handle_right = (
         1 + bez_point_rad, 0, 0)
-    weight_prim.data.extrude = 0.1
+    weight_prim.data.extrude = 0.05 / 4
     bpy.ops.object.mode_set(mode='OBJECT')
+    # base_weight_prim = bpy.data.objects[weight_prim_name]
+    # print(base_weight_prim)
     count_WL = self.count_L - 1
     x_step = 2
     idn_from = 0
+    node_depth_offset = 0
+    node_depth_offset_mid = 0
+    x_to = x_min + x_step
+    pos_idn_from = np.array([x_min, y_min, 0])
+
     for idn in range(self.max_N):
-        pos_idn_from = np.array([x_min, y_min, 0])
-        x_to = x_min + x_step
+
         y_to = y_min + y_step * idn
         pos_idn_to = np.array([x_to, y_to, 0])
         pos_mid = (pos_idn_to + pos_idn_from) / 2
         # node_depth_offset = (node_width / 2) * \
         # (-0.5 + 0.5 / self.count_N + idn / self.count_N)
-        node_depth_offset = 0
-        node_depth_offset_mid = 0
-        prev_ob = context.active_object
-        weight_cp = context.active_object
+
+        # context.selected_objects=bpy
+
+        # weight_cp = context.active_object
         bpy.ops.object.duplicate()
-
         weight_cp = context.active_object
-        weight_cp.name = 'weight_prim_' + str(idn).zfill(3)
-
+        if idn == 0:
+            current_collection.objects.link(weight_cp)
+            master_collection.objects.unlink(weight_cp)
+        weight_cp_name = 'weight_prim_' + str(idn + 1).zfill(3)
+        weight_cp.name = weight_cp_name
         bez_point_y = pos_mid[1] - pos_idn_from[1]
 
         weight_cp.location = pos_mid
@@ -151,8 +273,51 @@ def create_weight_prims(self, context: bpy.types.Context,
         weight_spline.bezier_points[2].handle_right = (
             1 + bez_point_rad, bez_point_y - node_depth_offset, 0)
 
+    bpy.ops.object.select_all(action='DESELECT')
+    base_w = bpy.data.objects[weight_prim_name]
+    base_w.select_set(True)
+    bpy.ops.object.hide_view_set(unselected=False)
+    bpy.ops.object.select_all(action='DESELECT')
+
+    for i in range(self.max_N):
+        weight_cp_name = 'weight_prim_' + str(i + 1).zfill(3)
+        current_w: bpy.types.Object = \
+            current_collection.objects[weight_cp_name]
+        current_w.select_set(True)
+
+        # print(context.area.type)
+        # current_w = context.active_object
+        # context.area.type = '?'
+        # bpy.ops.object.mode_set(mode='EDIT')
+        # if bpy.ops.object.mode_set.poll():
+        # print(current_w)
+
+        # if match_w or match_n:
+        # link_to.objects.unlink(ob)
+        # bpy.data.objects.remove(ob)
+    bpy.ops.object.convert(target='MESH')
+    bpy.ops.transform.translate(value=[1, 1 - 1 / max_n, 0])
+    bpy.ops.object.origin_set(type='ORIGIN_CURSOR', center='MEDIAN')
+    bpy.ops.object.transform_apply(location=True, rotation=True, scale=True)
+
+    weight_cp_name = 'weight_prim_' + str(1).zfill(3)
+    current_w: bpy.types.Object = \
+        current_collection.objects[weight_cp_name]
+    # current_w.select_set(False)
+    # bpy.ops.object.duplicate()
+    # bpy.ops.transform.rotate(value=3.14159, orient_axis='X')
+    # for j in range(max_n, 0, -1):
+
+    # for j in range(2):
+    #     bpy.ops.object.duplicate_move()
+    #     bpy.ops.transform.translate(value=[0, y_step, 0])
+    #     bpy.ops.object.move_to_collection(collection_index=2)
+
 
 def add_geonode_linear(self, context: bpy.types.Context,):
+    bpy.ops.mesh.primitive_grid_add(
+        size=2, enter_editmode=False, align='WORLD', location=(0, 0, 0), scale=(1, 1, 1))
+
     weight_ob = context.active_object
     bpy.ops.node.new_geometry_nodes_modifier()
     geonode_mod = weight_ob.modifiers.active
@@ -428,13 +593,14 @@ def get_color(x, y):
     return math.lerp(a, (1, 0, 0), (0, 0, 1))
 
 
-def ensure_collection(scene, collection_name) -> bpy.types.Collection:
+def ensure_collection(context, collection_name) -> bpy.types.Collection:
     # curr_scene = NewType('curr_scene', bpy.types.Scene.collection)
     # curr_scene.re
-    if collection_name in scene.collection.children:
-        link_to = scene.collection.children[collection_name]
+    asdf = "weight"
+    if collection_name in context.collection.children:
+        link_to = context.collection.children[collection_name]
         for ob in list(bpy.data.objects):
-            match_w = re.findall(r'^weight', ob.name)
+            match_w = re.findall(r'^{}'.format(asdf), ob.name)
             match_n = re.findall(r'^node', ob.name)
             if match_w or match_n:
                 # link_to.objects.unlink(ob)
@@ -463,21 +629,11 @@ def ensure_collection(scene, collection_name) -> bpy.types.Collection:
                 bpy.data.meshes.remove(mesh)
 
         bpy.data.collections.remove(link_to)
-    #
-    #     bpy.data.curves.remove(current_curve)
-    # for current_mesh in list(bpy.data.meshes):
-    #     bpy.data.meshes.remove(current_mesh)
-    # for current_material in list(bpy.data.materials):
-    #     bpy.data.materials.remove(current_material)
-    # for current_material in list(bpy.data.materials):
-    #     bpy.data.materials.remove(current_material)
-
-    # for icoll, curr_collection in enumerate(scene.collection.children):
-        # if icoll > 0:
-        # bpy.data.collections.remove(curr_collection)
+        # for coll in list(context.collection.children):
+        # print(coll.name)
 
     link_to = bpy.data.collections.new(collection_name)
-    scene.collection.children.link(link_to)
+    context.collection.children.link(link_to)
 
     return link_to
 
@@ -502,9 +658,9 @@ class NumpyArrayEncoder(JSONEncoder):
         return JSONEncoder.default(self, obj)
 
 
-def load_json_model() -> dict:
+def load_json_model(json_fname: str) -> dict:
     json_path = '/home/scott/dev/blender/scripts/addons/visual_ml/data/'
-    json_fname = 'numpyData.json'
+
     with open(json_path + json_fname) as f:
         data = json.load(f)
     return data

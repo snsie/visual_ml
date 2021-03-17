@@ -359,6 +359,46 @@ def ensure_collection(scene, collection_name) -> bpy.types.Collection:
             match_w = re.findall(r'^weight', ob.name)
             match_n = re.findall(r'^node', ob.name)
             if match_w or match_n:
+                # link_to.objects.unlink(ob)
+                bpy.data.objects.remove(ob)
+        for node_group in list(bpy.data.node_groups):
+            match_w = re.findall(r'^weight', node_group.name)
+            match_n = re.findall(r'^node', node_group.name)
+            if match_w or match_n:
+                bpy.data.node_groups.remove(node_group)
+        for curve in list(bpy.data.curves):
+            match_w = re.findall(r'^weight', curve.name)
+            match_n = re.findall(r'^node', curve.name)
+            if match_w or match_n:
+                bpy.data.curves.remove(curve)
+
+        for mat in list(bpy.data.materials):
+            match_w = re.findall(r'^weight', mat.name)
+            match_n = re.findall(r'^node', mat.name)
+            if match_w or match_n:
+                bpy.data.materials.remove(mat)
+
+        for mesh in list(bpy.data.meshes):
+            match_w = re.findall(r'^weight', mesh.name)
+            match_n = re.findall(r'^node', mesh.name)
+            if match_w or match_n:
+                bpy.data.meshes.remove(mesh)
+
+        bpy.data.collections.remove(link_to)
+    link_to = bpy.data.collections.new(collection_name)
+    scene.collection.children.link(link_to)
+    return link_to
+
+
+def old_ensure_collection(scene, collection_name) -> bpy.types.Collection:
+    # curr_scene = NewType('curr_scene', bpy.types.Scene.collection)
+    # curr_scene.re
+    if collection_name in scene.collection.children:
+        link_to = scene.collection.children[collection_name]
+        for ob in list(bpy.data.objects):
+            match_w = re.findall(r'^weight', ob.name)
+            match_n = re.findall(r'^node', ob.name)
+            if match_w or match_n:
                 link_to.objects.unlink(ob)
                 bpy.data.objects.remove(ob)
 

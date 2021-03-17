@@ -42,6 +42,31 @@ import torch.nn as nn
 import pytorch_lightning as pl
 
 
+class NumpyArrayEncoder(JSONEncoder):
+    def default(self, obj):
+        # JSONEncoder.FLOAT_REPR = lambda o: format(o, '.2f')
+        if isinstance(obj, np.ndarray):
+            out = obj.tolist()
+
+            # out=np.round(out,5)
+            for i, iarray in enumerate(out):
+                if isinstance(iarray, list):
+                    out[i] = np.around(iarray, 5)
+                    # out[i] = [f"{num:.5f}" for num in iarray]
+                else:
+                    out[i] = np.round(iarray, 5)
+            # if isinstance(out[0],list)==False:
+                # print('hello')
+                # out=np.around(out,5)
+
+            return out
+
+            # print(i)
+            # print('done')
+            # return out
+        return JSONEncoder.default(self, obj)
+
+
 class Learner(pl.LightningModule):
     def __init__(self, model: nn.Module):
         super().__init__()
@@ -79,37 +104,28 @@ model = nn.Sequential(Augmenter(augment_dims=5),
                       neuralDE,
                       nn.Linear(8, 2)).to(device)
 # Train the model
+epoch_checkpts = [1, 1, 3, 5, 10, 30, 50]
+curr_epoch = 0
+
+# for i in epoch_checkpts:
+# curr_epoch += i
+checkpoint_callback = pl.callbacks.ModelCheckpoint(
+    dirpath='./data/',
+    filename='{epoch:04d}-{val_loss:.3f}.hdf5',
+    period=5,
+    monitor='val_loss',
+    # save_weights_only=True,
+    save_top_k=10,
+    prefix='model_chpt'
+)
+trainer = pl.Trainer(max_epochs=50, checkpoint_callback=checkpoint_callback)
 learn = Learner(model)
-trainer = pl.Trainer(max_epochs=50)
+num = str(curr_epoch).zfill(4)
+fname = "./data/numpyData_e_{}.json".format(num)
+
 trainer.fit(learn)
 
 print("done")
-
-
-class NumpyArrayEncoder(JSONEncoder):
-    def default(self, obj):
-        # JSONEncoder.FLOAT_REPR = lambda o: format(o, '.2f')
-        if isinstance(obj, np.ndarray):
-            out = obj.tolist()
-
-            # out=np.round(out,5)
-            for i, iarray in enumerate(out):
-                if isinstance(iarray, list):
-                    out[i] = np.around(iarray, 5)
-                    # out[i] = [f"{num:.5f}" for num in iarray]
-                else:
-                    out[i] = np.round(iarray, 5)
-            # if isinstance(out[0],list)==False:
-                # print('hello')
-                # out=np.around(out,5)
-
-            return out
-
-            # print(i)
-            # print('done')
-            # return out
-        return JSONEncoder.default(self, obj)
-
 
 model_weights = []
 numpyData = {}
@@ -138,7 +154,7 @@ for i, param in enumerate(model.parameters()):
     numpyData[layerName][varName] = temp_array
     # file_name='../data_out/weights_'+str(i)+'.txt'
     # np.savetxt(file_name,temp_array, fmt='%1.5f')
-with open("./data/numpyData.json", "w") as write_file:
+with open(fname, "w") as write_file:
     json.dump(numpyData, write_file, cls=NumpyArrayEncoder)
 
 

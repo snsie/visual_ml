@@ -59,12 +59,14 @@ class VIEW3D_PT_visual_ml(bpy.types.Panel):
         # col.prop(context.scene, 'gltf_dir')
         # col.operator('import_scene.gltf_dir',)
         #  text='Default Grid', icon='MONKEY')
+        # ###############################################################
+        # if context.object:
+        #     col.operator("import_scene.gltf_reload")
+        #     col.prop(context.object, 'gltf_fname')
+        # else:
+        #     col.label(text='-no active object-')
 
-        if context.object:
-            col.operator("import_scene.gltf_reload")
-            col.prop(context.object, 'gltf_fname')
-        else:
-            col.label(text='-no active object-')
+        # ###############################################################
         # if context.active_object is None:
         # col.label(text='-no active object-')
         # else:

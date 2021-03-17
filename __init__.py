@@ -63,8 +63,8 @@ node_categories = add_geonodes.node_categories
 classes = (
     MESH_OT_add_nets,
     VIEW3D_PT_visual_ml,
-    IMPORT_SCENE_OT_gltf_dir,
-    IMPORT_SCENE_OT_gltf_reload,
+    # IMPORT_SCENE_OT_gltf_dir,
+    # IMPORT_SCENE_OT_gltf_reload,
     MESH_OT_load_net,
     MESH_OT_add_network,
     NODE_ST_MyCustomSocket,
@@ -111,12 +111,9 @@ def mesh_add_menu_draw(self, context):
 
 
 def register():
-    # des = "Visual ML Collection Name"
-
     Scene.count_l = IntProperty(
         name="count L", description="Number of layers",
         default=2, step=1, min=2, max=5)
-
     Scene.count_n = IntProperty(
         name="count N", description="Max number of nodes in each layer",
         default=8, min=2, step=2, max=64,)
@@ -125,7 +122,7 @@ def register():
         name="collection name",
         default="visual_ml")
     Scene.prim_coll_name = StringProperty(
-        name="collection name",
+        name="prim collection name",
         default="prim_vis_ml")
     Scene.gltf_dir = StringProperty(
         name="gltf dir",

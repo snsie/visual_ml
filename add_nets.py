@@ -48,8 +48,6 @@ class MESH_OT_add_nets(bpy.types.Operator):
     def execute(self, context):
         collection_name = context.scene.collection_name
         # curr_scene = context.scene
-        curr_scene = NewType('curr_scene', bpy.types.Scene)
-        print(dir(curr_scene))
         # curr_scene.
         # curr_scene.
         # curr_scene = NewType('curr_scene', bpy.types.Scene)
