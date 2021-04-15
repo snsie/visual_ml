@@ -90,35 +90,37 @@ class Learner(pl.LightningModule):
 
 
 # We consider 5 augmenting dimensions, i.e. the DEFunc must accomodate 8 inputs
-func = nn.Sequential(nn.Linear(8, 64),
+func = nn.Sequential(nn.Linear(6, 64),
                      nn.Tanh(),
-                     nn.Linear(64, 8)
+                     nn.Linear(64, 3)
                      )
 
 
 # Define NeuralDE
-neuralDE = NeuralDE(func, solver='dopri5').to(device)
+neuralDE = NeuralDE(func, solver='dopri5', order=2).to(device)
 
 # Here we specify to the "Augmenter" the 5 extra dims. For 0-augmentation, we do not need to pass additional arg.s
-model = nn.Sequential(Augmenter(augment_dims=5),
-                      neuralDE,
-                      nn.Linear(8, 2)).to(device)
+model = nn.Sequential(
+    Augmenter(augment_dims=3),
+    neuralDE,
+    nn.Linear(6, 2)).to(device)
 # Train the model
 epoch_checkpts = [1, 1, 3, 5, 10, 30, 50]
-curr_epoch = 0
+curr_epoch = 200
 
 # for i in epoch_checkpts:
 # curr_epoch += i
 checkpoint_callback = pl.callbacks.ModelCheckpoint(
-    dirpath='./data/',
-    filename='{epoch:04d}-{val_loss:.3f}.hdf5',
-    period=5,
-    monitor='val_loss',
+    dirpath='./data/ho_chpts/',
+    filename='{epoch:04d}-{loss:.3f}.hdf5',
+    period=1,
+    monitor='train_loss',
     # save_weights_only=True,
-    save_top_k=10,
+    save_top_k=curr_epoch,
     prefix='model_chpt'
 )
-trainer = pl.Trainer(max_epochs=50, checkpoint_callback=checkpoint_callback)
+trainer = pl.Trainer(max_epochs=curr_epoch,
+                     checkpoint_callback=checkpoint_callback)
 learn = Learner(model)
 num = str(curr_epoch).zfill(4)
 fname = "./data/numpyData_e_{}.json".format(num)
